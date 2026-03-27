@@ -127,7 +127,8 @@ export async function handleRequest(req: AppRequest): Promise<AppResponse> {
         hide_title: searchParams.get('hide_title') === 'true',
         custom_title: searchParams.get('custom_title') || undefined,
         border_radius: searchParams.has('border_radius') ? parseFloat(searchParams.get('border_radius')!) : undefined,
-        
+
+        layout: (searchParams.get('layout') || 'normal') as 'normal' | 'compact' | 'donut' | 'pie',
         hide_progress: searchParams.get('hide_progress') === 'true'
       })
     } else if (pathname === '/api/pin') {
@@ -167,11 +168,16 @@ export async function handleRequest(req: AppRequest): Promise<AppResponse> {
     }
 
   } catch (err: any) {
-    let msg = err.message || 'Unknown error occurred'
-    let secondary = err.type ? `Error type: ${err.type}` : undefined
-    
-    if (!(err instanceof CustomError)) {
-      secondary = 'Internal Server Error'
+    let msg = err instanceof CustomError ? err.message : 'Something went wrong'
+    let secondary: string | undefined
+
+    if (err instanceof CustomError) {
+      if      (err.type === 'USER_NOT_FOUND')  secondary = 'Check that the username exists and is spelled correctly'
+      else if (err.type === 'RATE_LIMIT')      secondary = 'GitHub API rate limit exceeded — try again later'
+      else if (err.type === 'NETWORK_ERROR')   secondary = 'Could not reach GitHub API — try again later'
+      else if (err.type === 'INVALID_TOKEN')   secondary = 'Server configuration error — contact the instance owner'
+    } else {
+      secondary = 'An unexpected error occurred — try again later'
     }
 
     return {

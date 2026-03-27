@@ -116,14 +116,17 @@ export function renderLangsCard(stats: LangData, options: LangsOptions): string 
   return `
     <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" fill="none" xmlns="http://www.w3.org/2000/svg">
       <style>
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
         .header { font: 600 18px 'Segoe UI', Ubuntu, Sans-Serif; fill: #${titleColor}; }
         .lang-name { font: 400 12px 'Segoe UI', Ubuntu, Sans-Serif; fill: #${textColor}; }
       </style>
       <rect x="0.5" y="0.5" width="${width - 1}" height="${height - 1}" rx="${options.border_radius ?? 4.5}" fill="#${bgColor}" ${borderOpt}/>
-      ${options.hide_title ? '' : `<text x="25" y="35" class="header">${escapeHtml(titleText)}</text>`}
-      
-      <g transform="translate(25, ${options.hide_title ? 20 : 65})">
-        ${content}
+      <g class="fade-in">
+        ${options.hide_title ? '' : `<text x="25" y="35" class="header">${escapeHtml(titleText)}</text>`}
+        <g transform="translate(25, ${options.hide_title ? 20 : 65})">
+          ${content}
+        </g>
       </g>
     </svg>
   `.trim()
