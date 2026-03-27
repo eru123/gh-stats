@@ -3,3 +3,9 @@ main = "adapters/worker.ts"
 compatibility_date = "2024-01-01"
 
 [vars]
+
+
+[observability]
+[observability.logs]
+enabled = true
+invocation_logs = true
