@@ -1,5 +1,7 @@
 # gh-stats
 
+[![PayPal](https://img.shields.io/badge/Donate-PayPal-0070ba?logo=paypal&logoColor=white)](https://paypal.me/ja1030)
+
 A self-hosted GitHub README stats card generator. Drop-in replacement for `anuraghazra/github-readme-stats` that runs on **Node.js/Express** or **Cloudflare Workers** from a single codebase.
 
 ---
