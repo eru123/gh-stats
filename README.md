@@ -11,6 +11,7 @@ A self-hosted GitHub README stats card generator. Drop-in replacement for `anura
   - [Stats Card](#stats-card)
   - [Top Languages Card](#top-languages-card)
   - [Repo Pin Card](#repo-pin-card)
+  - [ASCII Art Card](#ascii-art-card)
 - [Themes](#themes)
 - [Common Options](#common-options)
 - [Deployment](#deployment)
@@ -43,20 +44,6 @@ Displays your GitHub stats: total stars, commits, PRs, issues, followers, contri
 
 ```markdown
 ![Stats](https://gh-stats.skiddph.com/api/stats?username=eru123&theme=dark&show_icons=true)
-```
-
-**Preview layout:**
-```
-┌─────────────────────────────────────────┐
-│  eru123's GitHub Stats            [A+]  │
-│                                  ╭───╮  │
-│  ★ Total Stars        1,234      │   │  │
-│  ◉ Total Commits      5,678      ╰───╯  │
-│  ⑂ Total PRs          90               │
-│  ◎ Total Issues       45               │
-│  ☻ Followers          52               │
-│  ⑂ Contributed to     12               │
-└─────────────────────────────────────────┘
 ```
 
 **Parameters:**
@@ -150,15 +137,6 @@ Shows a card for a specific repository with its description, primary language, s
 ![Repo](https://gh-stats.skiddph.com/api/pin?username=eru123&repo=holyphp)
 ```
 
-**Preview layout:**
-```
-┌─────────────────────────────────────────┐
-│  📦 eru123/holyphp                      │
-│  A lightweight PHP framework            │
-│  ● TypeScript    ★ 42    ⑂ 8           │
-└─────────────────────────────────────────┘
-```
-
 **Parameters:**
 
 | Parameter | Type | Default | Description |
@@ -176,6 +154,81 @@ Shows a card for a specific repository with its description, primary language, s
 
 <!-- Show owner prefix, radical theme -->
 ![Repo](https://gh-stats.skiddph.com/api/pin?username=eru123&repo=holyphp&show_owner=true&theme=radical)
+```
+
+---
+
+### ASCII Art Card
+
+**Endpoint:** `GET /api/ascii`
+
+Converts any text into a pixel block SVG card using a built-in 5×7 bitmap font. No GitHub token required — works standalone.
+
+```markdown
+![ASCII](https://gh-stats.skiddph.com/api/ascii?text=ERU123&theme=dark)
+```
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `text` | string | **required** | Text to render. Max 50 characters. Auto-converted to uppercase. |
+| `style` | `block` \| `outline` \| `shadow` \| `neon` | `block` | Visual rendering style |
+| `size` | `sm` \| `md` \| `lg` \| `xl` | `md` | Block size preset (sets block_w, block_h, gap, char_spacing together) |
+| `color` | hex | theme title color | Color of the pixel blocks (without `#`) |
+| `block_w` | number | preset | Width of each pixel block in px — overrides `size` preset |
+| `block_h` | number | preset | Height of each pixel block in px — overrides `size` preset |
+| `gap` | number | preset | Gap between pixel blocks in px — overrides `size` preset |
+| `char_spacing` | number | preset | Extra space between characters in px — overrides `size` preset |
+| `block_radius` | number | `2` | Border radius of each pixel block |
+
+**Size presets:**
+
+| `size` | `block_w` | `block_h` | `gap` | `char_spacing` |
+|---|---|---|---|---|
+| `sm` | 10 | 7 | 2 | 6 |
+| `md` _(default)_ | 18 | 12 | 3 | 10 |
+| `lg` | 24 | 16 | 4 | 14 |
+| `xl` | 32 | 22 | 5 | 18 |
+
+**Style previews:**
+
+| `style` | Effect |
+|---|---|
+| `block` | Solid filled pixel blocks |
+| `outline` | Hollow blocks — only the border is drawn |
+| `shadow` | Solid blocks with a soft offset shadow behind them |
+| `neon` | Solid blocks with an SVG glow filter — best on dark backgrounds |
+
+> **Supported characters:** `A–Z`, `0–9`, and `` ! ? . , : ; - _ + = * / # @ % & ( ) [ ] < > ^ ~ ' " ` | space ``
+> Lowercase input is auto-uppercased. Unsupported characters render as blank space.
+
+**Examples:**
+
+```markdown
+<!-- Default block style, dark theme -->
+![ASCII](https://gh-stats.skiddph.com/api/ascii?text=HELLO&theme=dark)
+
+<!-- Outline style — hollow blocks -->
+![ASCII](https://gh-stats.skiddph.com/api/ascii?text=ERU123&style=outline&theme=dark&color=58a6ff)
+
+<!-- Shadow style — blocks with a soft drop shadow -->
+![ASCII](https://gh-stats.skiddph.com/api/ascii?text=ERU123&style=shadow&theme=dark&color=ff6e96)
+
+<!-- Neon style — glowing blocks (best on dark backgrounds) -->
+![ASCII](https://gh-stats.skiddph.com/api/ascii?text=ERU123&style=neon&bg_color=0d1117&color=79ff97&hide_border=true)
+
+<!-- Large size preset -->
+![ASCII](https://gh-stats.skiddph.com/api/ascii?text=ERU123&size=lg&theme=tokyonight)
+
+<!-- Small size, compact spacing -->
+![ASCII](https://gh-stats.skiddph.com/api/ascii?text=GH-STATS&size=sm&theme=dracula)
+
+<!-- XL neon on dark — maximum impact -->
+![ASCII](https://gh-stats.skiddph.com/api/ascii?text=CODE&size=xl&style=neon&bg_color=141321&color=fe428e&hide_border=true)
+
+<!-- Outline + rounded blocks, transparent background -->
+![ASCII](https://gh-stats.skiddph.com/api/ascii?text=HELLO&style=outline&bg_color=00000000&hide_border=true&block_radius=6)
 ```
 
 ---
@@ -255,8 +308,20 @@ GITHUB_TOKEN=ghp_xxxxxxxxxxxx npm start
 ```
 
 For development with live reload:
+
+```cmd
+:: Windows CMD
+set GITHUB_TOKEN=ghp_yourTokenHere && npm run dev
+```
+
+```powershell
+# PowerShell
+$env:GITHUB_TOKEN="ghp_yourTokenHere"; npm run dev
+```
+
 ```bash
-GITHUB_TOKEN=ghp_xxxxxxxxxxxx npm run dev
+# bash / Git Bash / macOS / Linux
+GITHUB_TOKEN=ghp_yourTokenHere npm run dev
 ```
 
 The server starts on port `3000` by default. Set `PORT` to change it.

@@ -1,5 +1,5 @@
 export interface CardOptions {
-  username: string
+  username?: string
   theme?: string
   title_color?: string
   text_color?: string
@@ -59,4 +59,15 @@ export interface RepoData {
 
 export interface LangData {
   [name: string]: { color: string; size: number; count: number }
+}
+
+export interface AsciiOptions extends CardOptions {
+  color?: string                           // pixel block color (hex, no #) — falls back to title_color then theme
+  style?: 'block' | 'outline' | 'shadow' | 'neon'  // rendering style (default: 'block')
+  size?: 'sm' | 'md' | 'lg' | 'xl'        // block size preset (default: 'md')
+  block_w?: number                         // block width in px — overrides size preset
+  block_h?: number                         // block height in px — overrides size preset
+  gap?: number                             // gap between blocks in px
+  char_spacing?: number                    // extra space between characters in px
+  block_radius?: number                    // border-radius of each block (default: 2)
 }
