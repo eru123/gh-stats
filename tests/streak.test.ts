@@ -155,4 +155,15 @@ describe('renderStreakCard', () => {
     const svg = renderStreakCard({ ...data, mode: 'weekly' }, { username: 'eru123' })
     expect(svg).toContain('Current Streak (weeks)')
   })
+
+  it('current streak number contrasts with the ring disc on every theme', () => {
+    for (const theme of ['default', 'dark', 'radical', 'tokyonight', 'dracula', 'gruvbox', 'onedark', 'transparent']) {
+      const svg = renderStreakCard(data, { username: 'eru123', theme })
+      const disc = svg.match(/<circle r="42" fill="#([0-9a-f]+)"/)?.[1]
+      const number = svg.match(/<text y="21"[^>]*fill="#([0-9a-f]+)"/)?.[1]
+      expect(disc, `theme=${theme}: ring disc not found`).toBeDefined()
+      expect(number, `theme=${theme}: streak number not found`).toBeDefined()
+      expect(disc, `theme=${theme}: number invisible on ring disc`).not.toBe(number)
+    }
+  })
 })

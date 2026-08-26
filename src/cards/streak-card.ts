@@ -116,7 +116,10 @@ export function renderStreakCard(data: StreakData, options: StreakOptions): stri
   // precedence: upstream-specific param → gh-stats common param → theme
   const background    = hex(options.background,    hex(options.bg_color,    theme.bg))
   const border        = hex(options.border,        hex(options.border_color, theme.border))
-  const ringColor     = hex(options.ring,          theme.border)
+  // disc fill defaults to the card background so the number (theme title
+  // color) always contrasts with it — border-colored discs swallowed the
+  // number on themes where border == title (tokyonight, dracula, ...)
+  const ringColor     = hex(options.ring,          background)
   const strokeColor   = hex(options.stroke,        theme.border)
   const fireColor     = hex(options.fire,          FIRE_COLORS[options.theme || 'default'] || 'ff6e96')
   const currStreakNum = hex(options.currStreakNum, hex(options.text_color, theme.title))
