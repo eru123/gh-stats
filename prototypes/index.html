@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>gh-stats — frontend prototypes</title>
+<style>
+:root{ --bg:#101216; --panel:#171a21; --line:#2a2f3a; --text:#e6e9f0; --dim:#8b91a3; --accent:#36f9f6; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif;font-size:16px;line-height:1.6;padding:40px 24px}
+main{max-width:1180px;margin:0 auto}
+h1{font-size:26px;margin-bottom:6px}
+.sub{color:var(--dim);margin-bottom:34px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:22px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+.frame{height:230px;border-bottom:1px solid var(--line);background:#000}
+.frame iframe{width:100%;height:100%;border:0;transform-origin:top left}
+.meta{padding:20px;display:flex;flex-direction:column;gap:10px;flex:1}
+.meta h2{font-size:18px}
+.meta p{color:var(--dim);font-size:14px;flex:1}
+.meta dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px}
+.meta dt{color:var(--dim)} .meta dd{color:var(--text)}
+.meta a{margin-top:8px;text-align:center;background:var(--accent);color:#0a0c10;font-weight:700;padding:11px;border-radius:9px;text-decoration:none}
+.meta a.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
+footer{margin-top:30px;color:var(--dim);font-size:13px}
+</style>
+</head>
+<body>
+<main>
+  <h1>gh-stats frontend — pick a direction</h1>
+  <p class="sub">Three working prototypes. Each has a landing page + a generator (“compose”, “playground”, “studio”) with live previews against the local instance. Click a card to explore the full prototype.</p>
+  <div class="grid">
+
+    <div class="card">
+      <div class="frame"><iframe src="a-amber-terminal/index.html" title="Prototype A" loading="lazy" scrolling="no"></iframe></div>
+      <div class="meta">
+        <h2>A — Amber Terminal</h2>
+        <p>Developer-native CRT vibe. The hero is a live typing card; the generator composes URLs like a shell command.</p>
+        <dl>
+          <dt>Palette</dt><dd>amber phosphor on warm black</dd>
+          <dt>Type</dt><dd>IBM Plex Mono throughout</dd>
+          <dt>Signature</dt><dd>command-composer output + live ticker</dd>
+          <dt>Mood</dt><dd>hackish, opinionated, “mine”</dd>
+        </dl>
+        <a href="a-amber-terminal/index.html">Open prototype A →</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="frame"><iframe src="b-spec-sheet/index.html" title="Prototype B" loading="lazy" scrolling="no"></iframe></div>
+      <div class="meta">
+        <h2>B — Spec Sheet</h2>
+        <p>Light editorial documentation style. Asymmetric collage hero, spec-table feature list, swatch-based theme picker.</p>
+        <dl>
+          <dt>Palette</dt><dd>paper, ink, gh-stats blue, marker yellow</dd>
+          <dt>Type</dt><dd>Bricolage Grotesque display + system</dd>
+          <dt>Signature</dt><dd>highlighter marks + dot-grid preview stage</dd>
+          <dt>Mood</dt><dd>clean, professional, documented</dd>
+        </dl>
+        <a href="b-spec-sheet/index.html">Open prototype B →</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="frame"><iframe src="c-neon-bento/index.html" title="Prototype C" loading="lazy" scrolling="no"></iframe></div>
+      <div class="meta">
+        <h2>C — Neon Bento</h2>
+        <p>Showcase-first gallery. A bento wall where every tile is a live card; the studio pairs a big stage with side controls.</p>
+        <dl>
+          <dt>Palette</dt><dd>deep navy + radical pink/cyan neons</dd>
+          <dt>Type</dt><dd>Syne display + DM Sans</dd>
+          <dt>Signature</dt><dd>⟳ shuffle-themes wall</dd>
+          <dt>Mood</dt><dd>vibrant, playful, product-showcase</dd>
+        </dl>
+        <a href="c-neon-bento/index.html">Open prototype C →</a>
+      </div>
+    </div>
+
+  </div>
+  <footer>Prototypes are self-contained HTML — no framework, no build. All previews render from the local dev instance (BASE constant in each file). After you pick, the chosen direction gets implemented properly against the deployed API.</footer>
+</main>
+</body>
+</html>
