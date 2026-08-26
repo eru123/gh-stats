@@ -11,6 +11,8 @@ A self-hosted GitHub README stats card generator. Single codebase (Node.js/Expre
 - `DenverCoder1/github-readme-youtube-cards` (YouTube cards)
 - shields.io dynamic JSON badges
 
+> 📚 **[EXAMPLES.md](EXAMPLES.md)** — a cookbook of every endpoint and variation as live, copy-pasteable URLs.
+
 ---
 
 ## Table of Contents
