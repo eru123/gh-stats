@@ -18,6 +18,10 @@ html{scroll-behavior:smooth}
 body{background:var(--bg);color:var(--cream);font-family:var(--font);font-size:15px;line-height:1.55;
   background-image:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,0,0,.14) 2px 4px)}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+@media (prefers-reduced-motion:reduce){
+  .strip-track{flex-wrap:wrap;width:auto}
+  .strip{mask-image:none;-webkit-mask-image:none;overflow-x:auto}
+}
 a{color:var(--amber)} a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
 /* top bar */
@@ -52,8 +56,14 @@ h1 .flag{color:var(--amber)}
 /* marquee strip of live cards */
 .strip{border-block:1px solid var(--line);background:var(--bg-deep);overflow:hidden;padding:14px 0}
 .strip-track{display:flex;gap:18px;width:max-content;animation:slide 36s linear infinite}
-.strip-track img{height:96px;width:auto}
+.strip-track img{height:96px;width:auto;border:1px solid var(--line);background:var(--bg-deep);padding:6px;border-radius:6px}
 @keyframes slide{to{transform:translateX(-50%)}}
+/* marquee: fade both edges into the page, pause to inspect a card */
+.strip{
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent);
+  mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent)}
+.strip-track{animation-duration:48s}
+.strip:hover .strip-track{animation-play-state:paused}
 /* features */
 .cards6{padding:64px 0}
 .cards6 h2{font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--amber-dim);margin-bottom:24px}
@@ -83,8 +93,17 @@ textarea{resize:vertical;min-height:64px}
 .out{display:flex;flex-direction:column;gap:24px}
 .stage{border:1px solid var(--line);background:
   repeating-linear-gradient(45deg,transparent 0 10px,rgba(255,176,0,.03) 10px 20px),var(--bg-deep);
-  min-height:320px;display:flex;align-items:center;justify-content:center;padding:28px;overflow:auto}
+  min-height:320px;display:flex;align-items:center;justify-content:center;padding:28px;overflow:auto;position:relative}
 .stage img{max-width:100%;height:auto;image-rendering:auto}
+/* skeleton overlay while the next card downloads */
+.skeleton{position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;background:var(--bg-deep)}
+.skeleton[hidden]{display:none}
+.skeleton .ph{width:min(420px,78%);height:130px;border:1px dashed var(--amber-dim);border-radius:6px;position:relative;
+  background:repeating-linear-gradient(90deg,rgba(255,176,0,.07) 0 26px,transparent 26px 52px);
+  animation:skPulse 1.1s ease-in-out infinite}
+.skeleton .ph::after{content:"rendering card…";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:12px;color:var(--muted);letter-spacing:.08em}
+@keyframes skPulse{50%{opacity:.45}}
 /* command line */
 .cmd{border:1px solid var(--line);background:var(--bg-deep)}
 .cmd-head{display:flex;gap:2px;border-bottom:1px solid var(--line);align-items:flex-end}
@@ -230,7 +249,10 @@ footer{border-top:1px solid var(--line);padding:26px 0;color:var(--muted);font-s
             <button class="copy" id="btnCopy">copy</button>
           </div>
         </div>
-        <div class="stage"><img id="preview" alt="Card preview"></div>
+        <div class="stage">
+          <div class="skeleton" id="skeleton" hidden><div class="ph"></div></div>
+          <img id="preview" alt="Card preview">
+        </div>
         <p class="note" id="curlLine"></p>
       </div>
     </div>
@@ -289,8 +311,6 @@ $$('.cmd-head [data-out]').forEach(b => b.addEventListener('click', () => {
   $$('.cmd-head [data-out]').forEach(x => x.setAttribute('aria-selected', x === b))
   render()
 }))
-;['fUser','fRepo','fLines','fBLabel','fBMsg','fBColor','fBLogo','fBStyle','fAscii','fAsciiStyle','fTheme','fLayout']
-  .forEach(id => $('#'+id).addEventListener('input', render))
 ;['fIcons','fAllCommits','fWeekends','fWeekly','fNoBorder']
   .forEach(id => $('#'+id).addEventListener('change', render))
 
@@ -327,14 +347,32 @@ function render(){
   const path = buildUrl() || ''
   const url = BASE + path
   const alt = `gh-stats ${type} card for ${$('#fUser').value || 'user'}`
-  $('#preview').src = url
-  $('#preview').alt = alt
+  // swap the card only after the new one has downloaded — skeleton covers the wait
+  const preview = $('#preview'), skeleton = $('#skeleton')
   $('#curlLine').textContent = '$ curl ' + url.replace('http://localhost:8932','gh-stats.skiddph.com')
   $('#outCode').textContent =
     outTab === 'md'  ? `![${alt}](${url})`
     : outTab === 'url' ? url
     : `<img src="${url}" alt="${alt}" />`
+  if (preview.src === url) { skeleton.hidden = true; return }
+  skeleton.hidden = false
+  preview.src = url
+  preview.alt = alt
 }
+// hide the skeleton exactly when the requested image is ready
+$('#preview').addEventListener('load', () => { $('#skeleton').hidden = true })
+$('#preview').addEventListener('error', () => {
+  const sk = $('#skeleton')
+  sk.querySelector('.ph')?.replaceChildren()
+  sk.hidden = true
+})
+// debounce text inputs so typing a username doesn't fire a request per keystroke
+let renderTimer
+const scheduleRender = () => { clearTimeout(renderTimer); renderTimer = setTimeout(render, 180) }
+;['fUser','fRepo','fLines','fBLabel','fBMsg','fBLogo','fAscii']
+  .forEach(id => $('#'+id).addEventListener('input', scheduleRender))
+;['fTheme','fLayout','fBColor','fBStyle','fAsciiStyle']
+  .forEach(id => $('#'+id).addEventListener('change', render))
 $('#btnCopy').addEventListener('click', async () => {
   await navigator.clipboard.writeText($('#outCode').textContent)
   $('#btnCopy').textContent = 'copied ✓'
