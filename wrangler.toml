@@ -2,6 +2,11 @@ name = "gh-stats"
 main = "adapters/worker.ts"
 compatibility_date = "2024-01-01"
 
+# static assets: / (and any file under public/) is served directly;
+# everything else — /api/* — falls through to the Worker
+[assets]
+directory = "./public"
+
 [vars]
 
 

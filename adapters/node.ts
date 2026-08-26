@@ -1,8 +1,18 @@
 import express from 'express'
+import { readFileSync } from 'fs'
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
 import { handleRequest } from '../src/router'
 
 const app = express()
 const PORT = process.env.PORT || 3000
+const here = dirname(fileURLToPath(import.meta.url))
+const landing = readFileSync(join(here, '../../public/index.html'), 'utf-8')
+
+app.get(['/'], (_req, res) => {
+  res.setHeader('Content-Type', 'text/html')
+  res.send(landing)
+})
 
 app.get('/api/*', async (req, res) => {
   const result = await handleRequest({
