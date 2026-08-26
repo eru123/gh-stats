@@ -2,7 +2,14 @@
 
 [![PayPal](https://img.shields.io/badge/Donate-PayPal-0070ba?logo=paypal&logoColor=white)](https://paypal.me/ja1030)
 
-A self-hosted GitHub README stats card generator. Drop-in replacement for `anuraghazra/github-readme-stats` **and** `DenverCoder1/github-readme-streak-stats` that runs on **Node.js/Express** or **Cloudflare Workers** from a single codebase.
+A self-hosted GitHub README stats card generator. Single codebase (Node.js/Express **or** Cloudflare Workers) that is a drop-in replacement for:
+
+- `anuraghazra/github-readme-stats` (stats, top languages, repo pin)
+- `DenverCoder1/github-readme-streak-stats` (streak stats)
+- `DenverCoder1/readme-typing-svg` (typing SVG)
+- `DenverCoder1/custom-icon-badges` (badges with custom icons)
+- `DenverCoder1/github-readme-youtube-cards` (YouTube cards)
+- shields.io dynamic JSON badges
 
 ---
 
@@ -14,6 +21,9 @@ A self-hosted GitHub README stats card generator. Drop-in replacement for `anura
   - [Top Languages Card](#top-languages-card)
   - [Repo Pin Card](#repo-pin-card)
   - [Streak Stats Card](#streak-stats-card)
+  - [Typing SVG Card](#typing-svg-card)
+  - [Badges](#badges)
+  - [YouTube Cards](#youtube-cards)
   - [ASCII Art Card](#ascii-art-card)
 - [Themes](#themes)
 - [Common Options](#common-options)
@@ -34,6 +44,8 @@ Once deployed, embed any card in your GitHub README as a standard Markdown image
 ![Top Langs](https://gh-stats.skiddph.com/api/top-langs?username=YOUR_USERNAME)
 ![Repo Pin](https://gh-stats.skiddph.com/api/pin?username=YOUR_USERNAME&repo=REPO_NAME)
 ![Streak Stats](https://gh-stats.skiddph.com/api/streak?username=YOUR_USERNAME)
+![Typing SVG](https://gh-stats.skiddph.com/api/typing?lines=Hello+world;Watch+me+type)
+![Badge](https://gh-stats.skiddph.com/api/badge/build-passing-brightgreen)
 ```
 
 ---
@@ -261,6 +273,147 @@ Option compatibility at a glance:
 
 ---
 
+### Typing SVG Card
+
+**Endpoint:** `GET /api/typing`
+
+A native reimplementation of [`DenverCoder1/readme-typing-svg`](https://github.com/DenverCoder1/readme-typing-svg). Animates text typing itself out line by line in a README-safe SVG. No token required — fully standalone.
+
+```markdown
+![Typing SVG](https://gh-stats.skiddph.com/api/typing?lines=Hello+world;I+am+eru123;Full--stack+developer)
+```
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `lines` | string | **required** | Semicolon-separated lines to type (`;` separator) |
+| `separator` | string | `;` | Change the separator if your lines contain semicolons |
+| `font` | string | `monospace` | Font family — falls back to monospace inside GitHub's image proxy |
+| `size` | number | `20` | Font size in px |
+| `color` | hex | `36BCF7` | Text color |
+| `background` | hex | `00000000` | Background (transparent by default) |
+| `width` | number | `400` | SVG width — increase for long lines |
+| `height` | number | computed | SVG height |
+| `center` | boolean | `false` | Horizontally center the text |
+| `vCenter` | boolean | `false` | Vertically center the text |
+| `multiline` | boolean | `false` | Keep previous lines on screen while the next types |
+| `duration` | number | `5000` | Milliseconds to type one line |
+| `pause` | number | `0` | Milliseconds to hold a finished line before erasing |
+| `repeat` | boolean | `true` | Loop forever (`false` plays once and freezes on the last line) |
+| `letterSpacing` | string | `normal` | CSS letter-spacing |
+
+**Migration from readme-typing-svg:** swap the host, keep everything after `?`:
+
+```markdown
+<!-- before -->
+![Typing SVG](https://readme-typing-svg.demolab.com?lines=First;line;Third)
+<!-- after -->
+![Typing SVG](https://gh-stats.skiddph.com/api/typing?lines=First;line;Third)
+```
+
+All documented upstream parameters are supported. Literal dashes work the same way as upstream — encode as `--` if needed.
+
+---
+
+### Badges
+
+**Endpoints:** `GET /api/badge/...`
+
+A reimplementation of [`DenverCoder1/custom-icon-badges`](https://github.com/DenverCoder1/custom-icon-badges) plus a native shields.io-compatible badge renderer and dynamic badge formatter.
+
+#### Static badges
+
+```markdown
+![Badge](https://gh-stats.skiddph.com/api/badge/build-passing-brightgreen)
+![Badge](https://gh-stats.skiddph.com/api/badge/version-1.0.0-blue?style=for-the-badge&logo=git-commit&logoColor=white)
+```
+
+Path format: `/api/badge/<label>-<message>-<color>` — encode a literal `-` inside label/message as `--`. Colors accept shields named colors (`brightgreen`, `blue`, `critical`, …) or hex.
+
+#### Query-string badges (shields `static/v1`)
+
+```markdown
+![Badge](https://gh-stats.skiddph.com/api/badge/static/v1?label=made%20with&message=TypeScript&color=blue&logo=typescript&logoColor=ffffff)
+```
+
+#### Dynamic badge formatter (JSON)
+
+Fetches any JSON URL and renders the queried value as a badge — native replacement for shields' `/badge/dynamic/json`:
+
+```markdown
+![Badge](https://gh-stats.skiddph.com/api/badge/dynamic/json?url=https://api.github.com/repos/eru123/gh-stats&query=$.stargazers_count&label=stars&suffix=%20stars&color=yellow)
+```
+
+**Parameters (badges):**
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `style` | `flat` \| `plastic` \| `flat-square` \| `for-the-badge` \| `social` | `flat` | Badge style |
+| `logo` | string | — | Icon: a custom icon slug, an [octicon](https://primer.style/foundations/icons) name, a [simple-icons](https://simpleicons.org) slug, or a `data:image/svg+xml;base64,...` URI |
+| `logoColor` | hex | icon default | Recolors the icon (fill-based icons) |
+| `logoWidth` | number | `14` (18 for `for-the-badge`) | Icon width in px |
+| `labelColor` | hex | `555555` (`2b2b2b` for `for-the-badge`) | Label background |
+| `label`, `message`, `color` | string | — | For `static/v1` and dynamic badges |
+
+**Parameters (dynamic):** `url` (required, http(s) JSON source ≤ 512 KB), `query` (required, jq-style path like `$.a.b[0].c` — keys, array indexes, bracketed keys), `prefix`, `suffix`, `queryColor` (use a queried value as the badge color).
+
+#### Custom icons
+
+The `logo` resolution chain mirrors custom-icon-badges:
+
+1. `data:` URIs pass through as-is
+2. **Your icons**: `icons/<slug>.svg` in the repo configured by `ICON_REPO` (default: this repo)
+3. **GitHub octicons** (e.g. `logo=git-commit`)
+4. **simple-icons** brand icons (e.g. `logo=typescript`)
+
+Upload your own icon by adding `icons/my-icon.svg` to your fork/repo and pointing `ICON_REPO` at `owner/repo`.
+
+#### Shields proxy
+
+Any other shields path — `/api/badge/dynamic/yaml|xml|toml`, `/api/badge/github/stars/:user/:repo`, `/api/badge/npm/v/:package`, … — is **proxied to img.shields.io** with the resolved custom icon injected, exactly the architecture custom-icon-badges uses. Static, `static/v1`, and `dynamic/json` badges are rendered natively; everything else stays shields-compatible through the proxy.
+
+```markdown
+![Stars](https://gh-stats.skiddph.com/api/badge/github/stars/eru123/gh-stats?style=social&label=Star)
+```
+
+Badges are cached 6 hours per URL. Errors render as a small red badge instead of a broken image.
+
+---
+
+### YouTube Cards
+
+**Endpoint:** `GET /api/videos`
+
+A reimplementation of the dynamic API from [`DenverCoder1/github-readme-youtube-cards`](https://github.com/DenverCoder1/github-readme-youtube-cards) — your latest videos as SVG cards, no GitHub Action required. Needs a YouTube Data API v3 key (see [`YOUTUBE_API_KEY`](#environment-variables)).
+
+```markdown
+<!-- by channel -->
+![Videos](https://gh-stats.skiddph.com/api/videos?channel_id=UCipSxT24I0E34v-lZ6PvjHg&width=250&max_videos=3)
+
+<!-- by playlist -->
+![Videos](https://gh-stats.skiddph.com/api/videos?playlist_id=PLME_2BhKjxUA&max_videos=6)
+```
+
+**Parameters** (same names as upstream):
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `channel_id` | string | — | YouTube channel id (or use `playlist_id`) |
+| `playlist_id` | string | — | YouTube playlist id |
+| `width` | number | `250` | Card width in px |
+| `border_radius` | number | `8` | Card corner radius |
+| `background_color` | hex | `ffffff` | Card background |
+| `title_color` | hex | `000000` | Video title color |
+| `stats_color` | hex | `000000` | Views/date color |
+| `max_title_lines` | number | `1` | Lines to wrap long titles to (long text truncates with `…`) |
+| `max_videos` | number | `6` | Number of cards (1–50) |
+| `filter` | regex | — | Exclude videos whose titles match, e.g. `Shorts\|Community` |
+
+Thumbnails are fetched and embedded as data URIs so the cards render inside GitHub's image proxy. Videos are cached 6 hours per URL.
+
+---
+
 ### ASCII Art Card
 
 **Endpoint:** `GET /api/ascii`
@@ -452,6 +605,9 @@ wrangler login
 # 2. Store your token as a secret (never commit it to wrangler.toml)
 wrangler secret put GITHUB_TOKEN
 
+# 2b. Optional secrets
+wrangler secret put YOUTUBE_API_KEY   # for /api/videos
+
 # 3. Deploy
 npm run deploy
 ```
@@ -467,7 +623,9 @@ https://gh-stats.<your-subdomain>.workers.dev/api/stats?username=eru123
 
 | Variable | Required | Description |
 |---|---|---|
-| `GITHUB_TOKEN` | **Yes** | GitHub Personal Access Token. Needs `read:user` and `public_repo` scopes. Generate at: GitHub → Settings → Developer settings → Personal access tokens |
+| `GITHUB_TOKEN` | For GitHub cards | GitHub Personal Access Token. Needs `read:user` and `public_repo` scopes. Generate at: GitHub → Settings → Developer settings → Personal access tokens |
+| `YOUTUBE_API_KEY` | For YouTube cards | YouTube Data API v3 key — Google Cloud Console → Enable "YouTube Data API v3" → Credentials → API key |
+| `ICON_REPO` | No | Repo holding custom badge icons, as `owner/repo` (icons live in `icons/<slug>.svg`). Default: this repo. Can also be a full raw-content base URL |
 | `PORT` | No | Port for the Node.js server (default: `3000`) |
 | `CACHE_SECONDS` | No | Override the default cache TTL for all card types |
 | `WHITELIST` | No | Comma-separated list of allowed usernames. If set, all other usernames are rejected. Useful for self-hosted instances. Example: `eru123,octocat` |

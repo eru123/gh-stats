@@ -2,13 +2,20 @@ import { fetchStats } from './fetchers/stats'
 import { fetchTopLangs } from './fetchers/langs'
 import { fetchRepo } from './fetchers/repo'
 import { fetchStreak } from './fetchers/streak'
+import { fetchVideos } from './fetchers/youtube'
+import { resolveIcon } from './fetchers/icons'
+import { fetchDynamicJson, queryJson, stringifyQueryResult } from './fetchers/dynamic'
 import { renderStatsCard } from './cards/stats-card'
 import { renderLangsCard } from './cards/langs-card'
 import { renderRepoCard } from './cards/repo-card'
 import { renderAsciiCard } from './cards/ascii-card'
 import { renderStreakCard } from './cards/streak-card'
+import { renderTypingCard } from './cards/typing-card'
+import { renderBadge, resolveColor } from './cards/badge-card'
+import { renderVideosCard } from './cards/videos-card'
 import { CustomError, renderErrorSVG } from './utils/errors'
 import { MemoryCache, CfCache } from './utils/cache'
+import { BadgeStyle } from './types'
 
 export interface AppRequest {
   url: string
@@ -17,6 +24,8 @@ export interface AppRequest {
     GITHUB_TOKEN: string
     CACHE_SECONDS?: string
     WHITELIST?: string
+    YOUTUBE_API_KEY?: string
+    ICON_REPO?: string
   }
 }
 
@@ -36,23 +45,54 @@ function isCloudflareEnv(_env: any): boolean {
   )
 }
 
+/** forwards a shields.io path, swapping `logo` for a resolved custom icon */
+async function proxyShields(
+  shieldsPath: string,
+  searchParams: URLSearchParams,
+  iconData?: string
+): Promise<{ body: string; headers: Record<string, string> }> {
+  const qs = new URLSearchParams(searchParams)
+  qs.delete('host')
+  if (iconData) qs.set('logo', iconData)
+  const target = `https://img.shields.io/${shieldsPath}${qs.toString() ? `?${qs}` : ''}`
+
+  const res = await fetch(target, {
+    headers: { 'User-Agent': 'gh-stats' },
+  }).catch(() => {
+    throw new CustomError('Could not reach shields.io', 'NETWORK_ERROR')
+  })
+  if (!res.ok) {
+    throw new CustomError(`shields.io responded with ${res.status}`, 'SERVER_ERROR')
+  }
+  return {
+    body: await res.text(),
+    headers: {
+      'Content-Type': res.headers.get('content-type') || 'image/svg+xml',
+    },
+  }
+}
+
 export async function handleRequest(req: AppRequest): Promise<AppResponse> {
+  let pathname = ''
   try {
     const url = new URL(req.url)
-    const { pathname, searchParams } = url
+    pathname = url.pathname
+    const { searchParams } = url
 
     // streak data changes daily — cache shorter than the static-ish cards
     const defaultTTL =
       pathname === '/api/stats' || pathname === '/api/stats/' ||
-      pathname === '/api/streak' || pathname === '/api/streak/'
+      pathname === '/api/streak' || pathname === '/api/streak/' ||
+      pathname === '/api/videos' || pathname.startsWith('/api/badge')
         ? 21600 : 86400
     const cacheSeconds = req.env.CACHE_SECONDS
       ? parseInt(req.env.CACHE_SECONDS)
       : defaultTTL
 
-    const contentType = pathname === '/api/streak' && searchParams.get('type') === 'json'
-      ? 'application/json'
-      : 'image/svg+xml'
+    const contentType =
+      (pathname === '/api/streak' && searchParams.get('type') === 'json') || pathname.endsWith('.json')
+        ? 'application/json'
+        : 'image/svg+xml'
 
     const cacheKey = url.toString()
     const cache = isCloudflareEnv(req.env) ? new CfCache() : memCache
@@ -102,6 +142,128 @@ export async function handleRequest(req: AppRequest): Promise<AppResponse> {
           ? parseInt(searchParams.get('char_spacing')!) : undefined,
         block_radius: searchParams.has('block_radius')
           ? parseFloat(searchParams.get('block_radius')!) : undefined,
+      })
+
+    // ── Typing SVG — readme-typing-svg replacement, no token required ────────
+    } else if (pathname === '/api/typing') {
+      const separator = searchParams.get('separator') || ';'
+      const rawLines = (searchParams.get('lines') || '')
+        .split(separator)
+        .map(l => l.trim().slice(0, 200))
+        .filter(l => l.length > 0)
+        .slice(0, 50)
+      if (rawLines.length === 0) {
+        throw new CustomError('Missing or empty lines parameter', 'USER_NOT_FOUND')
+      }
+      body = renderTypingCard(rawLines, {
+        font:         searchParams.get('font')         || undefined,
+        color:        (searchParams.get('color')       || undefined)?.replace(/^#/, ''),
+        background:   (searchParams.get('background')  || undefined)?.replace(/^#/, ''),
+        size:         searchParams.has('size')  ? parseInt(searchParams.get('size')!)  : undefined,
+        width:        searchParams.has('width') ? parseInt(searchParams.get('width')!) : undefined,
+        height:       searchParams.has('height') ? parseInt(searchParams.get('height')!) : undefined,
+        center:       searchParams.get('center')  === 'true',
+        vCenter:      searchParams.get('vCenter') === 'true',
+        multiline:    searchParams.get('multiline') === 'true',
+        duration:     searchParams.has('duration') ? parseInt(searchParams.get('duration')!) : undefined,
+        pause:        searchParams.has('pause')    ? parseInt(searchParams.get('pause')!)   : undefined,
+        repeat:       searchParams.get('repeat') !== 'false',
+        letterSpacing: searchParams.get('letterSpacing') || undefined,
+      })
+
+    // ── Badges — custom-icon-badges / shields replacement ────────────────────
+    } else if (pathname === '/api/badge' || pathname.startsWith('/api/badge/')) {
+      const style = (searchParams.get('style') || 'flat') as BadgeStyle
+      const logoParam = searchParams.get('logo') || undefined
+      const iconData = await resolveIcon(logoParam, {
+        logoColor: searchParams.get('logoColor') || undefined,
+        iconRepo: req.env.ICON_REPO,
+      })
+
+      const badgePath = decodeURIComponent(pathname.replace(/^\/api\/badge\/?/, '')).replace(/\.svg$/, '')
+
+      if (badgePath === 'dynamic/json') {
+        // native dynamic formatter
+        const sourceUrl = searchParams.get('url')
+        const query = searchParams.get('query')
+        if (!sourceUrl || !query) {
+          throw new CustomError('dynamic/json requires url and query parameters', 'USER_NOT_FOUND')
+        }
+        const data = await fetchDynamicJson(sourceUrl)
+        const value = stringifyQueryResult(queryJson(data, query))
+        const prefix = searchParams.get('prefix') || ''
+        const suffix = searchParams.get('suffix') || ''
+        const color = searchParams.has('queryColor')
+          ? resolveColor(stringifyQueryResult(queryJson(data, searchParams.get('queryColor')!)))
+          : resolveColor(searchParams.get('color'), 'brightgreen')
+        body = renderBadge({
+          label: searchParams.get('label') || 'custom badge',
+          message: `${prefix}${value}${suffix}`,
+          color,
+          labelColor: resolveColor(searchParams.get('labelColor'), undefined),
+          style, logoData: iconData,
+          logoWidth: searchParams.has('logoWidth') ? parseInt(searchParams.get('logoWidth')!) : undefined,
+        })
+      } else if (badgePath === 'static/v1' || badgePath === 'static/v1.svg') {
+        body = renderBadge({
+          label: searchParams.get('label') || '',
+          message: searchParams.get('message') || '',
+          color: resolveColor(searchParams.get('color')),
+          labelColor: resolveColor(searchParams.get('labelColor'), undefined),
+          style, logoData: iconData,
+          logoWidth: searchParams.has('logoWidth') ? parseInt(searchParams.get('logoWidth')!) : undefined,
+        })
+      } else if (badgePath && !badgePath.includes('/')) {
+        // static badge path: /badge/<label>-<message>-<color> (use -- for a literal dash)
+        const SENTINEL = '\x00'
+        const parts = badgePath.replace(/--/g, SENTINEL).split('-')
+          .map(p => p.replace(new RegExp(SENTINEL, 'g'), '-'))
+        if (parts.length !== 3) {
+          throw new CustomError('Expected /api/badge/<label>-<message>-<color> (encode literal dashes as --)', 'USER_NOT_FOUND')
+        }
+        body = renderBadge({
+          label: parts[0],
+          message: parts[1],
+          color: resolveColor(parts[2]),
+          labelColor: resolveColor(searchParams.get('labelColor'), undefined),
+          style, logoData: iconData,
+          logoWidth: searchParams.has('logoWidth') ? parseInt(searchParams.get('logoWidth')!) : undefined,
+        })
+      } else {
+        // anything else (dynamic/yaml|xml|toml, /github/*, /npm/*, …) proxies to
+        // shields.io with the resolved custom icon injected — the same
+        // architecture custom-icon-badges uses upstream
+        const proxied = await proxyShields(badgePath, searchParams, iconData)
+        await cache.set(cacheKey, proxied.body, cacheSeconds)
+        return {
+          body: proxied.body,
+          status: 200,
+          headers: {
+            ...proxied.headers,
+            'Cache-Control': `public, max-age=${cacheSeconds}, s-maxage=${cacheSeconds}`,
+          },
+        }
+      }
+
+    // ── YouTube cards — ytcards replacement, needs YOUTUBE_API_KEY ──────────
+    } else if (pathname === '/api/videos') {
+      const videos = await fetchVideos({
+        apiKey: req.env.YOUTUBE_API_KEY || '',
+        channelId: searchParams.get('channel_id') || undefined,
+        playlistId: searchParams.get('playlist_id') || undefined,
+        maxVideos: searchParams.has('max_videos')
+          ? parseInt(searchParams.get('max_videos')!) : undefined,
+        filter: searchParams.get('filter') || undefined,
+      })
+      body = renderVideosCard(videos, {
+        width:        searchParams.has('width') ? parseInt(searchParams.get('width')!) : undefined,
+        border_radius: searchParams.has('border_radius')
+          ? parseFloat(searchParams.get('border_radius')!) : undefined,
+        background_color: searchParams.get('background_color') || undefined,
+        title_color:  searchParams.get('title_color')  || undefined,
+        stats_color:  searchParams.get('stats_color')  || undefined,
+        max_title_lines: searchParams.has('max_title_lines')
+          ? parseInt(searchParams.get('max_title_lines')!) : undefined,
       })
 
     // ── GitHub-backed routes — require username + token ──────────────────────
@@ -268,6 +430,23 @@ export async function handleRequest(req: AppRequest): Promise<AppResponse> {
       else if (err.type === 'INVALID_TOKEN')   secondary = 'Server configuration error — contact the instance owner'
     } else {
       secondary = 'An unexpected error occurred — try again later'
+    }
+
+    // badge endpoints report errors as badges, not as the large error card
+    if (pathname.startsWith('/api/badge')) {
+      return {
+        body: renderBadge({
+          label: 'error',
+          message: msg.slice(0, 80),
+          color: 'e05d44',
+          style: 'flat',
+        }),
+        status: 200,
+        headers: {
+          'Content-Type': 'image/svg+xml',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+        },
+      }
     }
 
     return {

@@ -12,6 +12,8 @@ app.get('/api/*', async (req, res) => {
       GITHUB_TOKEN: process.env.GITHUB_TOKEN!,
       CACHE_SECONDS: process.env.CACHE_SECONDS,
       WHITELIST: process.env.WHITELIST,
+      YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY,
+      ICON_REPO: process.env.ICON_REPO,
     }
   })
   

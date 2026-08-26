@@ -113,3 +113,57 @@ export interface AsciiOptions extends CardOptions {
   char_spacing?: number                    // extra space between characters in px
   block_radius?: number                    // border-radius of each block (default: 2)
 }
+
+// ── readme-typing-svg ─────────────────────────────────────────────────────────
+
+export interface TypingOptions {
+  font?: string                // font family name (default: monospace)
+  color?: string               // text color (hex, no #) — default 36BCF7
+  background?: string          // background color — default 00000000
+  size?: number                // font size in px (default 20)
+  width?: number               // svg width (default 400)
+  height?: number              // svg height (default: computed)
+  center?: boolean             // horizontally center text
+  vCenter?: boolean            // vertically center text
+  multiline?: boolean          // keep previous lines visible while typing
+  duration?: number            // ms to type one line (default 5000)
+  pause?: number               // ms to hold a finished line (default 0)
+  repeat?: boolean             // loop forever (default true)
+  letterSpacing?: string       // css letter-spacing (default normal)
+}
+
+// ── badges (shields-compatible static + custom icons) ─────────────────────────
+
+export type BadgeStyle = 'flat' | 'plastic' | 'flat-square' | 'for-the-badge' | 'social'
+
+export interface BadgeOptions {
+  label: string
+  message: string
+  color: string               // resolved hex (no #)
+  labelColor?: string         // resolved hex (no #)
+  style?: BadgeStyle
+  logoData?: string           // data:image/svg+xml;base64,... or undefined
+  logoWidth?: number
+  logoColorApplied?: boolean
+}
+
+// ── youtube cards ─────────────────────────────────────────────────────────────
+
+export interface VideoData {
+  id: string
+  title: string
+  thumbnailData: string       // data:image/jpeg;base64,...
+  publishedAt: string         // ISO
+  viewCount: number
+  channelTitle: string
+}
+
+export interface VideosOptions {
+  width?: number              // card width (default 250)
+  border_radius?: number      // default 8
+  background_color?: string   // default ffffff
+  title_color?: string        // default 000000
+  stats_color?: string        // default 000000
+  max_title_lines?: number    // default 1
+  max_videos?: number         // default 6
+}
