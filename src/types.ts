@@ -61,6 +61,48 @@ export interface LangData {
   [name: string]: { color: string; size: number; count: number }
 }
 
+export interface StreakDay {
+  date: string   // YYYY-MM-DD (UTC)
+  count: number
+}
+
+export interface StreakRange {
+  length: number
+  start: string | null   // YYYY-MM-DD
+  end:   string | null   // YYYY-MM-DD
+}
+
+export interface StreakData {
+  totalContributions: number
+  currentStreak: StreakRange
+  longestStreak: StreakRange
+  startingYear: number
+  mode: 'daily' | 'weekly'
+}
+
+export interface StreakOptions extends CardOptions {
+  mode?: 'daily' | 'weekly'
+  starting_year?: number
+  timezone?: string                 // IANA zone (e.g. Asia/Manila) or offset (+08:00, -5)
+  exclude_days?: string[]           // day names: Sun, Mon, ...
+  exclude_dates?: string[]          // YYYY-MM-DD, MM-DD (annual), or A..B ranges
+  date_format?: string              // PHP-style: M j[, Y] — [..] hidden when year == current
+  locale?: string                   // used for dates when date_format is absent
+  card_width?: number
+  disable_animations?: boolean
+  // upstream github-readme-streak-stats color params (hex, # optional)
+  background?: string
+  border?: string
+  stroke?: string
+  ring?: string
+  fire?: string
+  currStreakNum?: string
+  currStreakLabel?: string
+  sideNums?: string
+  sideLabels?: string
+  dates?: string
+}
+
 export interface AsciiOptions extends CardOptions {
   color?: string                           // pixel block color (hex, no #) — falls back to title_color then theme
   style?: 'block' | 'outline' | 'shadow' | 'neon'  // rendering style (default: 'block')

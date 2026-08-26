@@ -1,10 +1,12 @@
 import { fetchStats } from './fetchers/stats'
 import { fetchTopLangs } from './fetchers/langs'
 import { fetchRepo } from './fetchers/repo'
+import { fetchStreak } from './fetchers/streak'
 import { renderStatsCard } from './cards/stats-card'
 import { renderLangsCard } from './cards/langs-card'
 import { renderRepoCard } from './cards/repo-card'
 import { renderAsciiCard } from './cards/ascii-card'
+import { renderStreakCard } from './cards/streak-card'
 import { CustomError, renderErrorSVG } from './utils/errors'
 import { MemoryCache, CfCache } from './utils/cache'
 
@@ -39,11 +41,18 @@ export async function handleRequest(req: AppRequest): Promise<AppResponse> {
     const url = new URL(req.url)
     const { pathname, searchParams } = url
 
+    // streak data changes daily — cache shorter than the static-ish cards
     const defaultTTL =
-      pathname === '/api/stats' || pathname === '/api/stats/' ? 21600 : 86400
+      pathname === '/api/stats' || pathname === '/api/stats/' ||
+      pathname === '/api/streak' || pathname === '/api/streak/'
+        ? 21600 : 86400
     const cacheSeconds = req.env.CACHE_SECONDS
       ? parseInt(req.env.CACHE_SECONDS)
       : defaultTTL
+
+    const contentType = pathname === '/api/streak' && searchParams.get('type') === 'json'
+      ? 'application/json'
+      : 'image/svg+xml'
 
     const cacheKey = url.toString()
     const cache = isCloudflareEnv(req.env) ? new CfCache() : memCache
@@ -54,7 +63,7 @@ export async function handleRequest(req: AppRequest): Promise<AppResponse> {
         body: cached,
         status: 200,
         headers: {
-          'Content-Type': 'image/svg+xml',
+          'Content-Type': contentType,
           'Cache-Control': `public, max-age=${cacheSeconds}, s-maxage=${cacheSeconds}`,
         },
       }
@@ -97,7 +106,9 @@ export async function handleRequest(req: AppRequest): Promise<AppResponse> {
 
     // ── GitHub-backed routes — require username + token ──────────────────────
     } else {
-      const username = searchParams.get('username')
+      // `username` is the gh-stats convention; `user` is accepted as an alias
+      // for drop-in compatibility with github-readme-streak-stats URLs
+      const username = searchParams.get('username') || searchParams.get('user')
       if (!username || !USERNAME_REGEX.test(username)) {
         throw new CustomError('Invalid or missing username', 'USER_NOT_FOUND')
       }
@@ -165,6 +176,50 @@ export async function handleRequest(req: AppRequest): Promise<AppResponse> {
           hide_progress: searchParams.get('hide_progress') === 'true',
         })
 
+      } else if (pathname === '/api/streak' || pathname === '/api/streak/') {
+        const streak = await fetchStreak(username, {
+          token:         req.env.GITHUB_TOKEN,
+          starting_year: searchParams.has('starting_year')
+            ? parseInt(searchParams.get('starting_year')!) : undefined,
+          timezone:      searchParams.get('timezone') || undefined,
+          mode:          (searchParams.get('mode') === 'weekly' ? 'weekly' : 'daily'),
+          exclude_days:  searchParams.get('exclude_days')?.split(','),
+          exclude_dates: searchParams.get('exclude_dates')?.split(','),
+        })
+
+        if (searchParams.get('type') === 'json') {
+          body = JSON.stringify(streak)
+        } else {
+          body = renderStreakCard(streak, {
+            username,
+            theme:         searchParams.get('theme')        || undefined,
+            title_color:   searchParams.get('title_color')  || undefined,
+            text_color:    searchParams.get('text_color')   || undefined,
+            bg_color:      searchParams.get('bg_color')     || undefined,
+            border_color:  searchParams.get('border_color') || undefined,
+            hide_border:   searchParams.get('hide_border')  === 'true',
+            hide_title:    searchParams.get('hide_title')   !== 'false',
+            custom_title:  searchParams.get('custom_title') || undefined,
+            border_radius: searchParams.has('border_radius')
+              ? parseFloat(searchParams.get('border_radius')!) : undefined,
+            date_format:   searchParams.get('date_format')  || undefined,
+            locale:        searchParams.get('locale')       || undefined,
+            card_width:    searchParams.has('card_width')
+              ? parseInt(searchParams.get('card_width')!)   : undefined,
+            disable_animations: searchParams.get('disable_animations') === 'true',
+            // upstream github-readme-streak-stats color params
+            background:    searchParams.get('background')    || undefined,
+            stroke:        searchParams.get('stroke')        || undefined,
+            ring:          searchParams.get('ring')          || undefined,
+            fire:          searchParams.get('fire')          || undefined,
+            currStreakNum: searchParams.get('currStreakNum') || undefined,
+            currStreakLabel: searchParams.get('currStreakLabel') || undefined,
+            sideNums:      searchParams.get('sideNums')      || undefined,
+            sideLabels:    searchParams.get('sideLabels')    || undefined,
+            dates:         searchParams.get('dates')         || undefined,
+          })
+        }
+
       } else if (pathname === '/api/pin') {
         const repo = searchParams.get('repo')
         if (!repo) throw new CustomError('Missing repo parameter', 'USER_NOT_FOUND')
@@ -198,7 +253,7 @@ export async function handleRequest(req: AppRequest): Promise<AppResponse> {
       body,
       status: 200,
       headers: {
-        'Content-Type': 'image/svg+xml',
+        'Content-Type': contentType,
         'Cache-Control': `public, max-age=${cacheSeconds}, s-maxage=${cacheSeconds}`,
       },
     }

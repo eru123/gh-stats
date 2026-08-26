@@ -2,7 +2,7 @@
 
 [![PayPal](https://img.shields.io/badge/Donate-PayPal-0070ba?logo=paypal&logoColor=white)](https://paypal.me/ja1030)
 
-A self-hosted GitHub README stats card generator. Drop-in replacement for `anuraghazra/github-readme-stats` that runs on **Node.js/Express** or **Cloudflare Workers** from a single codebase.
+A self-hosted GitHub README stats card generator. Drop-in replacement for `anuraghazra/github-readme-stats` **and** `DenverCoder1/github-readme-streak-stats` that runs on **Node.js/Express** or **Cloudflare Workers** from a single codebase.
 
 ---
 
@@ -13,6 +13,7 @@ A self-hosted GitHub README stats card generator. Drop-in replacement for `anura
   - [Stats Card](#stats-card)
   - [Top Languages Card](#top-languages-card)
   - [Repo Pin Card](#repo-pin-card)
+  - [Streak Stats Card](#streak-stats-card)
   - [ASCII Art Card](#ascii-art-card)
 - [Themes](#themes)
 - [Common Options](#common-options)
@@ -32,6 +33,7 @@ Once deployed, embed any card in your GitHub README as a standard Markdown image
 ![GitHub Stats](https://gh-stats.skiddph.com/api/stats?username=YOUR_USERNAME)
 ![Top Langs](https://gh-stats.skiddph.com/api/top-langs?username=YOUR_USERNAME)
 ![Repo Pin](https://gh-stats.skiddph.com/api/pin?username=YOUR_USERNAME&repo=REPO_NAME)
+![Streak Stats](https://gh-stats.skiddph.com/api/streak?username=YOUR_USERNAME)
 ```
 
 ---
@@ -160,6 +162,105 @@ Shows a card for a specific repository with its description, primary language, s
 
 ---
 
+### Streak Stats Card
+
+**Endpoint:** `GET /api/streak`
+
+A native reimplementation of [`DenverCoder1/github-readme-streak-stats`](https://github.com/DenverCoder1/github-readme-streak-stats) inside this repo — no PHP, no second service. Shows your **total contributions**, **current streak**, and **longest streak** (with date ranges) in the classic three-column layout with the flame-in-a-ring centerpiece.
+
+```markdown
+![Streak](https://gh-stats.skiddph.com/api/streak?username=eru123)
+```
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `username` | string | **required** | GitHub username. `user=` is accepted as an alias (upstream compatibility) |
+| `mode` | `daily` \| `weekly` | `daily` | `weekly` counts consecutive Sun–Sat weeks with ≥1 contribution |
+| `exclude_days` | string | — | Comma-separated days to skip: `Sun,Mon,Tue,Wed,Thu,Fri,Sat`. Excluded days never break a streak and their contributions aren't counted |
+| `exclude_dates` | string | — | Dates to skip: `2026-01-01`, ranges `2026-03-01..2026-03-15`, or annual `12-25` (every year) |
+| `date_format` | string | `M j[, Y]` | PHP-style format for the date ranges: `d j D l S n m M F Y y`. Text in `[brackets]` is only shown when the date's year ≠ current year |
+| `timezone` | string | `UTC` | IANA zone (`Asia/Manila`) or fixed offset (`+08:00`, `-5`). Determines which day counts as "today" for the current streak |
+| `starting_year` | number | account creation | First year to scan for the longest streak / totals (max 25 years back) |
+| `type` | `svg` \| `json` | `svg` | `json` returns the raw streak data instead of an image |
+| `locale` | string | — | Locale for date rendering when `date_format` is absent, e.g. `de`, `fil-PH` |
+| `card_width` | number | `495` | Card width in px (clamped to 320–800) |
+| `disable_animations` | boolean | `false` | Turn off the fade-in animation |
+| `hide_title` | boolean | `true` | **Inverted vs other cards** — the streak card has no title by default (matches upstream). Pass `hide_title=false` to show one |
+| `custom_title` | string | `<user> GitHub Streak` | Title text when shown |
+| `theme`, `hide_border`, `border_radius`, `bg_color`, `border_color`, `text_color`, `title_color` | — | — | All [Common Options](#common-options) work |
+| `background`, `border`, `stroke`, `ring`, `fire`, `currStreakNum`, `currStreakLabel`, `sideNums`, `sideLabels`, `dates` | hex | theme | Upstream color params (with or without `#`) — see [migration](#migrating-from-github-readme-streak-stats) |
+
+The card is cached for **6 hours** per unique URL by default (override with the `CACHE_SECONDS` env var) so the current streak stays reasonably fresh without hammering the GitHub API.
+
+**Examples:**
+
+```markdown
+<!-- Basic streak card -->
+![Streak](https://gh-stats.skiddph.com/api/streak?username=eru123)
+
+<!-- Dark theme, weekends excluded -->
+![Streak](https://gh-stats.skiddph.com/api/streak?username=eru123&theme=dark&exclude_days=Sat,Sun)
+
+<!-- Weekly mode, Philippine timezone -->
+![Streak](https://gh-stats.skiddph.com/api/streak?username=eru123&mode=weekly&timezone=Asia/Manila)
+
+<!-- Skip a vacation + annual holidays, long date format -->
+![Streak](https://gh-stats.skiddph.com/api/streak?username=eru123&exclude_dates=2026-05-01..2026-05-15,12-25&date_format=l,+F+jS,+Y)
+
+<!-- Upstream-style explicit colors: fire, ring, and per-section text -->
+![Streak](https://gh-stats.skiddph.com/api/streak?username=eru123&background=141321&border=e4e2e2&ring=1f1b2e&fire=ff6e96&currStreakNum=ffffff&sideNums=fe428e&currStreakLabel=a9fef7&sideLabels=a9fef7&dates=a9fef7)
+
+<!-- Raw JSON data for your own tooling -->
+curl "https://gh-stats.skiddph.com/api/streak?username=eru123&type=json"
+```
+
+```json
+{
+  "totalContributions": 14404,
+  "currentStreak":  { "length": 79, "start": "2026-06-08", "end": "2026-08-25" },
+  "longestStreak":  { "length": 85, "start": "2022-01-18", "end": "2022-04-12" },
+  "startingYear": 2018,
+  "mode": "daily"
+}
+```
+
+#### How it works
+
+1. **Data source** — the card reads GitHub's official GraphQL API (`contributionsCollection → contributionCalendar`), the same calendar GitHub renders on your profile. Two requests per uncached render: one to get your account's creation year, then **one batched query** with a per-year alias from that year (or `starting_year`) to the current year — so even a 10-year account is a single round trip. It uses the same `GITHUB_TOKEN` as every other card (`read:user` scope is enough) and respects `WHITELIST`.
+2. **Streak math** — days are walked in UTC day buckets. A day with ≥1 contribution extends a run; an empty day ends it. Two conveniences: *today doesn't count against you* (the day isn't over — an empty today falls back to yesterday before checking), and *excluded days are transparent* (they're skipped entirely, never breaking a run, whether or not you contributed that day). `mode=weekly` buckets days into Sun–Sat weeks first, then applies the same logic to weeks. Excluded days'/dates' contributions are subtracted from the total.
+3. **Rendering** — pure string-built SVG, no DOM/rasterizer, so it runs identically on Node.js and Cloudflare Workers (no Node-only APIs — this is why it deploys to the same Worker as the rest of gh-stats). It shares the theme engine with all other cards, so `theme=tokyonight` looks consistent across your stats, langs, pin, and streak cards.
+4. **Caching** — responses are cached per full URL (6 h default): in the Cloudflare Cache API on Workers, in memory on Node. GitHub itself is only hit on cache misses, and the browser gets `Cache-Control: public, max-age` headers too.
+
+#### Migrating from github-readme-streak-stats
+
+Swap the host and path, keep the rest of the URL — `user=` works as-is:
+
+```markdown
+<!-- before -->
+![Streak](https://streak-stats.demolab.com/?user=eru123&theme=dark&date_format=M+j[%2C+Y])
+
+<!-- after -->
+![Streak](https://gh-stats.skiddph.com/api/streak?user=eru123&theme=dark&date_format=M+j[%2C+Y])
+```
+
+Option compatibility at a glance:
+
+| Upstream option | Status here |
+|---|---|
+| `user` | ✅ accepted as-is (alias of `username`) |
+| `date_format` (incl. `[brackets]`) | ✅ same PHP-style tokens: `d j D l S n m M F Y y` |
+| `mode=daily\|weekly`, `exclude_days`, `exclude_dates` (incl. ranges & annual dates) | ✅ supported |
+| `timezone`, `card_width`, `border_radius`, `hide_border`, `disable_animations` | ✅ supported |
+| `background`, `border`, `stroke`, `ring`, `fire`, `currStreakNum`, `currStreakLabel`, `sideNums`, `sideLabels`, `dates` | ✅ supported, same meanings |
+| `theme` | ⚠️ different names — this repo ships `default`, `dark`, `radical`, `tokyonight`, `dracula`, `gruvbox`, `onedark`, `transparent` (shared with all cards). Recreate any upstream theme exactly with the color params above |
+| `locale` | ⚠️ dates only (e.g. `de`, `fil-PH`); card labels remain English |
+| `type=png` | ❌ not supported (no rasterizer — SVG keeps the service dependency-free). `type=json` is supported |
+| `exclude_days_label` and other label overrides | ❌ labels are fixed English: *Total Contributions / Current Streak / Longest Streak* |
+
+---
+
 ### ASCII Art Card
 
 **Endpoint:** `GET /api/ascii`
@@ -254,6 +355,7 @@ Apply a theme with `&theme=NAME` on any card.
 ![Stats](https://gh-stats.skiddph.com/api/stats?username=eru123&theme=tokyonight)
 ![Langs](https://gh-stats.skiddph.com/api/top-langs?username=eru123&theme=dracula)
 ![Repo](https://gh-stats.skiddph.com/api/pin?username=eru123&repo=holyphp&theme=gruvbox)
+![Streak](https://gh-stats.skiddph.com/api/streak?username=eru123&theme=onedark)
 ```
 
 > **Tip:** Use `theme=transparent` for cards that adapt to GitHub's light/dark mode switching.
@@ -262,7 +364,7 @@ Apply a theme with `&theme=NAME` on any card.
 
 ## Common Options
 
-These parameters work on **all three cards**:
+These parameters work on **all cards** (on the streak card, `hide_title` is inverted — the title is hidden by default, pass `hide_title=false` to show it):
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
