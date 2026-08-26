@@ -278,10 +278,10 @@ Each example shows the **rendered card** first, then the Markdown to copy.
 
 **Basic:**
 
-![Typing](https://gh-stats.skiddph.com/api/typing?lines=Hello,+I+am+Jericho;Full--stack+developer;Building+things+at+skiddph.com)
+![Typing](https://gh-stats.skiddph.com/api/typing?lines=Hello,+I+am+Jericho;Full-stack+developer;Building+things+at+skiddph.com)
 
 ```markdown
-![Typing](https://gh-stats.skiddph.com/api/typing?lines=Hello,+I+am+Jericho;Full--stack+developer;Building+things+at+skiddph.com)
+![Typing](https://gh-stats.skiddph.com/api/typing?lines=Hello,+I+am+Jericho;Full-stack+developer;Building+things+at+skiddph.com)
 ```
 
 **Multiline (lines stack as they complete):**
@@ -294,10 +294,10 @@ Each example shows the **rendered card** first, then the Markdown to copy.
 
 **Custom font, size, colors, timing:**
 
-![Typing](https://gh-stats.skiddph.com/api/typing?lines=Self--hosted;No+third--party+CDNs&font=Fira+Code&size=24&color=fe428e&background=141321&duration=2500&pause=1000&width=520)
+![Typing](https://gh-stats.skiddph.com/api/typing?lines=Self-hosted;No+third-party+CDNs&font=Fira+Code&size=24&color=fe428e&background=141321&duration=2500&pause=1000&width=520)
 
 ```markdown
-![Typing](https://gh-stats.skiddph.com/api/typing?lines=Self--hosted;No+third--party+CDNs&font=Fira+Code&size=24&color=fe428e&background=141321&duration=2500&pause=1000&width=520)
+![Typing](https://gh-stats.skiddph.com/api/typing?lines=Self-hosted;No+third-party+CDNs&font=Fira+Code&size=24&color=fe428e&background=141321&duration=2500&pause=1000&width=520)
 ```
 
 **Centered, plays once and freezes:**
@@ -507,7 +507,7 @@ Add `icons/<slug>.svg` to the repo configured in `ICON_REPO`:
 A complete, copy-pasteable profile section using everything together:
 
 <div align="center">
-  <img src="https://gh-stats.skiddph.com/api/typing?lines=Hey,+I+am+Jericho;Full--stack+developer;Building+SaaS+at+skiddph.com&font=Fira+Code&duration=2500&pause=900&width=560" alt="typing" />
+  <img src="https://gh-stats.skiddph.com/api/typing?lines=Hey,+I+am+Jericho;Full-stack+developer;Building+SaaS+at+skiddph.com&font=Fira+Code&duration=2500&pause=900&width=560" alt="typing" />
 </div>
 
 <div align="center">
@@ -548,7 +548,7 @@ The Markdown for the combo above:
 
 ```markdown
 <div align="center">
-  <img src="https://gh-stats.skiddph.com/api/typing?lines=Hey,+I+am+Jericho;Full--stack+developer;Building+SaaS+at+skiddph.com&font=Fira+Code&duration=2500&pause=900&width=560" alt="typing" />
+  <img src="https://gh-stats.skiddph.com/api/typing?lines=Hey,+I+am+Jericho;Full-stack+developer;Building+SaaS+at+skiddph.com&font=Fira+Code&duration=2500&pause=900&width=560" alt="typing" />
 </div>
 
 <div align="center">
