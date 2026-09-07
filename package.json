@@ -2,10 +2,12 @@
   "name": "gh-stats",
   "scripts": {
     "build": "tsc",
+    "check": "tsc --noEmit",
     "dev": "tsx watch adapters/node.ts",
     "start": "node dist/adapters/node.js",
     "deploy": "wrangler deploy",
-    "test": "vitest"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "express": "^4.18.0"
